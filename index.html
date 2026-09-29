@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi App de Voz</title>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 20px; background: #f4f4f9; }
+        #btn-voz { padding: 20px; font-size: 20px; border-radius: 50%; cursor: pointer; background: #007bff; color: white; border: none; }
+        ul { list-style: none; padding: 0; margin-top: 20px; }
+        li { background: white; margin: 10px auto; padding: 10px; width: 80%; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body>
+    <h1>Tareas por Voz</h1>
+    <button id="btn-voz">🎤 Hablar</button>
+    <ul id="lista-tareas"></ul>
+
+    <script src="app.js"></script>
+</body>
+</html>
