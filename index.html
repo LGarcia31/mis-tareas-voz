@@ -3,20 +3,125 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mi App de Voz</title>
-    <link rel="manifest" href="manifest.json">
+    <title>Mis Tareas Pro</title>
     <style>
         body { font-family: sans-serif; text-align: center; padding: 20px; background: #f4f4f9; }
-        #btn-voz { padding: 20px; font-size: 20px; border-radius: 50%; cursor: pointer; background: #007bff; color: white; border: none; }
+        #btn-voz { padding: 20px; font-size: 20px; border-radius: 50%; cursor: pointer; background: #007bff; color: white; border: none; width: 100px; height: 100px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); transition: 0.3s; }
+        #btn-voz:active { transform: scale(0.9); background: #0056b3; }
         ul { list-style: none; padding: 0; margin-top: 20px; }
-        li { background: white; margin: 10px auto; padding: 10px; width: 80%; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        li { background: white; margin: 10px auto; padding: 15px; width: 85%; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
+        .vencida { background: #ffcccc; border: 2px solid red; animation: blink 1s infinite; }
+        @keyframes blink { 0% {opacity: 1;} 50% {opacity: 0.5;} 100% {opacity: 1;} }
+        .hora { font-size: 0.8em; color: #666; font-weight: bold; margin-left: 10px; }
+        .btn-borrar { background: #ff4d4d; color: white; border: none; border-radius: 5px; padding: 5px 10px; cursor: pointer; font-weight: bold; }
     </style>
 </head>
-<body>
-    <h1>Tareas por Voz</h1>
-    <button id="btn-voz">🎤 Hablar</button>
+<body onload="cargarTareas()">
+    <h1>Mis Tareas Pro</h1>
+    <button id="btn-voz">🎤</button>
+    <p>Di la tarea directamente o "borrar todo"</p>
     <ul id="lista-tareas"></ul>
 
-    <script src="app.js"></script>
+    <script>
+        const btnVoz = document.getElementById('btn-voz');
+        const listaTareas = document.getElementById('lista-tareas');
+        const STORAGE_KEY = 'mis_tareas_finales'; // Clave única para evitar errores de guardado
+
+        const hablar = (texto) => {
+            const utterance = new SpeechSynthesisUtterance(texto);
+            utterance.lang = 'es-ES';
+            window.speechSynthesis.speak(utterance);
+        };
+
+        const guardarEnMemoria = () => {
+            const tareas = [];
+            document.querySelectorAll('li').forEach(li => {
+                tareas.push({
+                    texto: li.querySelector('.texto').textContent,
+                    hora: li.querySelector('.hora').textContent
+                });
+            });
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(tareas));
+        };
+
+        const cargarTareas = () => {
+            const datos = localStorage.getItem(STORAGE_KEY);
+            if (datos) {
+                const tareas = JSON.parse(datos);
+                tareas.forEach(t => crearElementoTarea(t.texto, t.hora));
+            }
+        };
+
+        const crearElementoTarea = (texto, hora) => {
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <div>
+                    <span class="texto">${texto}</span>
+                    <span class="hora">${hora}</span>
+                </div>
+                <button class="btn-borrar" onclick="borrarTarea(this)">X</button>
+            `;
+            listaTareas.appendChild(li);
+        };
+
+        // Función para borrar una sola tarea
+        window.borrarTarea = (btn) => {
+            btn.parentElement.remove();
+            guardarEnMemoria();
+        };
+
+        // Reloj para alertas
+        setInterval(() => {
+            const ahora = new Date();
+            const horaActual = ahora.getHours().toString().padStart(2, '0') + ":" + ahora.getMinutes().toString().padStart(2, '0');
+            document.querySelectorAll('li').forEach(li => {
+                const horaTarea = li.querySelector('.hora').textContent;
+                if (horaTarea === horaActual && !li.classList.contains('vencida')) {
+                    li.classList.add('vencida');
+                    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    const osc = audioCtx.createOscillator();
+                    osc.connect(audioCtx.destination);
+                    osc.start(); osc.stop(audioCtx.currentTime + 0.5);
+                    alert("⏰ RECORDATORIO: " + li.querySelector('.texto').textContent);
+                }
+            });
+        }, 1000);
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'es-ES';
+
+            btnVoz.onclick = () => {
+                recognition.start();
+                btnVoz.textContent = "...";
+            };
+
+            recognition.onresult = (event) => {
+                let texto = event.results[0][0].transcript.toLowerCase();
+                btnVoz.textContent = "🎤";
+                
+                if (texto.includes("borrar todo")) {
+                    listaTareas.innerHTML = "";
+                    localStorage.removeItem(STORAGE_KEY);
+                    hablar("He borrado todo");
+                } else {
+                    // Limpiar palabras innecesarias
+                    let frase = texto.replace("añadir", "").replace("agregar", "").trim();
+                    let horaFinal = "Sin hora";
+
+                    const matchHora = frase.match(/(\d{1,2}:\d{2})/);
+                    if (matchHora) {
+                        horaFinal = matchHora[0];
+                        frase = frase.replace("a las " + horaFinal, "").replace(horaFinal, "").trim();
+                    }
+
+                    crearElementoTarea(frase, horaFinal);
+                    guardarEnMemoria();
+                    hablar("Guardado: " + frase);
+                }
+            };
+        }
+    </script>
 </body>
 </html>
